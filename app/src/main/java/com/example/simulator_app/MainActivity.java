@@ -1,6 +1,7 @@
 package com.example.simulator_app;
 
 import android.os.Bundle;
+import android.support.constraint.ConstraintLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
@@ -15,38 +16,37 @@ import com.example.triage.Victim;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
-    private Victim victim;
+    //private Victim victim;
+    private Simulator simulator;
     private Spinner spinner;
 
 
-    public void actualize() {
-        while (victim.getChangingState()) {
-            TextView t;
-            t = findViewById(R.id.breath_val);
-            if(victim.isBreathing())
-                t.setText("tak");
-            else
-                t.setText("nie");
+    public void actualize(Victim victim) {
+        TextView t;
+        t = findViewById(R.id.breath_val);
+        if(victim.isBreathing())
+            t.setText("tak");
+        else
+            t.setText("nie");
 
-            t = findViewById(R.id.refill_val);
-            t.setText(victim.getRespiratoryRate()+"odd./min");
+        t = findViewById(R.id.refill_val);
+        t.setText(victim.getRespiratoryRate()+"odd./min");
 
-            t = findViewById(R.id.pulse_val);
-            t.setText(victim.getCapillaryRefillTime()+"s");
+        t = findViewById(R.id.pulse_val);
+        t.setText(victim.getCapillaryRefillTime()+"s");
 
-            t = findViewById(R.id.walking_val);
-            if(victim.isWalking())
-                t.setText("tak");
-            else
-                t.setText("nie");
+        t = findViewById(R.id.walking_val);
+        if(victim.isWalking())
+            t.setText("tak");
+        else
+            t.setText("nie");
 
-            t = findViewById(R.id.conscious_val);
-            switch(victim.getConsciousness()){
-                case AWAKE: t.setText("przytomny"); break;
-                case VERBAL: t.setText("reag. na głos"); break;
-                case PAIN: t.setText("reag. na ból"); break;
-                case UNRESPONSIVE: t.setText("nieprzytomny"); break;
-            }
+        t = findViewById(R.id.conscious_val);
+        switch(victim.getConsciousness()){
+            case AWAKE: t.setText("przytomny"); break;
+            case VERBAL: t.setText("reag. na głos"); break;
+            case PAIN: t.setText("reag. na ból"); break;
+            case UNRESPONSIVE: t.setText("nieprzytomny"); break;
         }
     }
 
@@ -59,7 +59,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setSupportActionBar(toolbar);
 
         spinner = findViewById(R.id.spin_lifeline);
-        victim = new Victim(spinner.getSelectedItemPosition());
+        Victim victim = new Victim(spinner.getSelectedItemPosition());
+        simulator = new Simulator(victim, this);
 
         Button startButton = findViewById(R.id.startButton);
         startButton.setOnClickListener(this);
@@ -90,31 +91,33 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void onClick(View v) {
-
         switch (v.getId()) {
             case R.id.startButton:
                 Toast.makeText(MainActivity.this, "Start", Toast.LENGTH_SHORT).show();
                 try {
-                    victim = new Victim(spinner.getSelectedItemPosition());
-                    victim.changeState();
-                    actualize();
-                } catch (InterruptedException e) {
+                    simulator.start();
+                } catch (IllegalThreadStateException e) { //something went wrong
                     e.printStackTrace();
+                    Victim victim = new Victim(spinner.getSelectedItemPosition());
+                    simulator = new Simulator(victim, this);
+                    simulator.start();
                 }
                 break;
             case R.id.stopButton:
                 Toast.makeText(MainActivity.this, "Stop", Toast.LENGTH_SHORT).show();
-                victim = new Victim(spinner.getSelectedItemPosition());
-                victim.stopChangingState();
+                simulator.kill();
                 break;
             case R.id.pauseButton:
+                if(simulator.isPaused()){
+                    simulator.unpause();
+                    ((Button)findViewById(R.id.pauseButton)).setText("PAUZA");
+                }
+                else {
+                    simulator.pause();
+                    ((Button)findViewById(R.id.pauseButton)).setText("KONT.");
+                }
                 break;
-                default:
-                    try {
-                        victim.changeState();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
+            default:
         }
     }
 }

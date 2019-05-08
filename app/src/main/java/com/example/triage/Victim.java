@@ -1,15 +1,17 @@
 package com.example.triage;
 
+import android.app.Activity;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.Spinner;
 
+import com.example.simulator_app.MainActivity;
 import com.example.simulator_app.R;
 
 import java.io.Serializable;
 
 //klasa reprezentująca poszkodowanego rozszerzona o
 //interfejs pozwalający na przesyłanie obiektu między aktywnościami
-public class Victim extends AppCompatActivity implements Serializable {
+public class Victim implements Serializable {
 
     private boolean changingState;
     private int lifeline;
@@ -54,9 +56,9 @@ public class Victim extends AppCompatActivity implements Serializable {
             case 2:
                 setRed();
                 break;
-                default:
-                    setYellow();
-                    break;
+            default:
+                setYellow();
+                break;
         }
 
     }
@@ -112,22 +114,6 @@ public class Victim extends AppCompatActivity implements Serializable {
                             color = TriageColor.YELLOW;
                         }
                     }
-                }
-            }
-        }
-    }
-
-    public void changeState() throws InterruptedException {
-        changingState = true;
-        while(changingState) {
-            synchronized (this) {
-                try {
-                    wait(100);
-                    setGreen();
-                    wait(100);
-                    setYellow();
-                } catch (InterruptedException e) {
-
                 }
             }
         }
