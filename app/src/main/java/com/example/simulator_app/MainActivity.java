@@ -1,15 +1,55 @@
 package com.example.simulator_app;
 
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
+import android.widget.Spinner;
+import android.widget.TextView;
+import android.widget.Toast;
 
-public class MainActivity extends AppCompatActivity {
+import com.example.triage.Victim;
+
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+
+    private Victim victim;
+    private Spinner spinner;
+
+
+    public void actualize() {
+        while (victim.getChangingState()) {
+            TextView t;
+            t = findViewById(R.id.breath_val);
+            if(victim.isBreathing())
+                t.setText("tak");
+            else
+                t.setText("nie");
+
+            t = findViewById(R.id.refill_val);
+            t.setText(victim.getRespiratoryRate()+"odd./min");
+
+            t = findViewById(R.id.pulse_val);
+            t.setText(victim.getCapillaryRefillTime()+"s");
+
+            t = findViewById(R.id.walking_val);
+            if(victim.isWalking())
+                t.setText("tak");
+            else
+                t.setText("nie");
+
+            t = findViewById(R.id.conscious_val);
+            switch(victim.getConsciousness()){
+                case AWAKE: t.setText("przytomny"); break;
+                case VERBAL: t.setText("reag. na głos"); break;
+                case PAIN: t.setText("reag. na ból"); break;
+                case UNRESPONSIVE: t.setText("nieprzytomny"); break;
+            }
+        }
+    }
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -18,14 +58,16 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
+        spinner = findViewById(R.id.spin_lifeline);
+        victim = new Victim(spinner.getSelectedItemPosition());
+
+        Button startButton = findViewById(R.id.startButton);
+        startButton.setOnClickListener(this);
+        Button stopButton = findViewById(R.id.stopButton);
+        stopButton.setOnClickListener(this);
+        Button pauseButton = findViewById(R.id.pauseButton);
+        pauseButton.setOnClickListener(this);
+
     }
 
     @Override
@@ -42,11 +84,37 @@ public class MainActivity extends AppCompatActivity {
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onClick(View v) {
+
+        switch (v.getId()) {
+            case R.id.startButton:
+                Toast.makeText(MainActivity.this, "Start", Toast.LENGTH_SHORT).show();
+                try {
+                    victim = new Victim(spinner.getSelectedItemPosition());
+                    victim.changeState();
+                    actualize();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                break;
+            case R.id.stopButton:
+                Toast.makeText(MainActivity.this, "Stop", Toast.LENGTH_SHORT).show();
+                victim = new Victim(spinner.getSelectedItemPosition());
+                victim.stopChangingState();
+                break;
+            case R.id.pauseButton:
+                break;
+                default:
+                    try {
+                        victim.changeState();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+        }
     }
 }

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="lifelineNumber">
+        <item>Żółta</item>
+        <item>Zielona</item>
+        <item>Czerwona</item>
+        <item>Zielona/Żółta</item>
+        <item>Żółta/Czerwona</item>
+    </string-array>
+</resources>
