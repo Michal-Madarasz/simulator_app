@@ -1,21 +1,16 @@
-package com.example.triage;
-
-import android.app.Activity;
-import android.support.v7.app.AppCompatActivity;
-import android.widget.Spinner;
-
-import com.example.simulator_app.MainActivity;
-import com.example.simulator_app.R;
+package com.triage.model;
 
 import java.io.Serializable;
 
 //klasa reprezentująca poszkodowanego rozszerzona o
 //interfejs pozwalający na przesyłanie obiektu między aktywnościami
 public class Victim implements Serializable {
+    private static final long serialVersionUID = 186362213453111235L;
+
+    private static int totalID = 0;
 
     private boolean changingState;
-    private int lifeline;
-    private long transmitterIMEI;
+    private long id;
     private boolean breathing;
     private int respiratoryRate;
     private float capillaryRefillTime;
@@ -23,8 +18,8 @@ public class Victim implements Serializable {
     private TriageColor color;
     private AVPU consciousness;
 
-    public Victim(long transmitterIMEI, boolean breathing, int respiratoryRate, float capillaryRefillTime, boolean walking, AVPU consciousness) {
-        this.transmitterIMEI = transmitterIMEI;
+    public Victim(boolean breathing, int respiratoryRate, float capillaryRefillTime, boolean walking, AVPU consciousness) {
+        this.id = totalID; totalID++;
         this.breathing = breathing;
         this.respiratoryRate = respiratoryRate;
         this.capillaryRefillTime = capillaryRefillTime;
@@ -33,62 +28,17 @@ public class Victim implements Serializable {
         calculateColor();
     }
 
-    public Victim( int choice ) {
-
-        lifeline = choice;
-        setParameters();
-    }
-
     public Victim() {
-        lifeline = 0;
-        setParameters();
-    }
-
-    public void setParameters() {
-
-        switch (lifeline) {
-            case 0:
-                setYellow();
-                break;
-            case 1:
-                setGreen();
-                break;
-            case 2:
-                setRed();
-                break;
-            default:
-                setYellow();
-                break;
-        }
-
-    }
-
-    public void setGreen() {
-        walking=true;
-        breathing=true;
-        respiratoryRate=25;
-        capillaryRefillTime=1;
-        consciousness=AVPU.VERBAL;
+        this.id = totalID; totalID++;
+        this.breathing = true;
+        this.respiratoryRate = 20;
+        this.capillaryRefillTime = 1.5f;
+        this.walking = true;
+        this.consciousness = AVPU.AWAKE;
         calculateColor();
     }
 
-    public void setYellow() {
-        breathing=true;
-        respiratoryRate=25;
-        capillaryRefillTime=1;
-        walking=false;
-        consciousness=AVPU.AWAKE;
-        calculateColor();
-    }
 
-    public void setRed() {
-        walking=false;
-        breathing=true;
-        respiratoryRate=35;
-        capillaryRefillTime=1;
-        consciousness=AVPU.VERBAL;
-        calculateColor();
-    }
 
     public void calculateColor() {
         if(walking){
@@ -119,12 +69,12 @@ public class Victim implements Serializable {
         }
     }
 
-    public long getTransmitterIMEI() {
-        return transmitterIMEI;
+    public long getId() {
+        return id;
     }
 
-    public void setTransmitterIMEI(long transmitterIMEI) {
-        this.transmitterIMEI = transmitterIMEI;
+    public void setId(long id) {
+        this.id = id;
     }
 
     public boolean isBreathing() {

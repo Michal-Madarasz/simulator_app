@@ -1,16 +1,16 @@
 package com.example.simulator_app;
 
-import android.app.Activity;
-import android.widget.TextView;
-
-import com.example.triage.Victim;
+import com.triage.model.Victim;
 
 import java.util.Random;
 
 public class Simulator extends Thread{
 
-    Victim victim;
-    MainActivity activity;
+    private final int timeStep = 3000;
+
+    private Victim victim;
+    private Lifeline lifeline;
+    private MainActivity activity;
     volatile boolean alive = false;
     private boolean paused = false;
     private final Object pauseLock = new Object();
@@ -18,6 +18,7 @@ public class Simulator extends Thread{
     public Simulator(Victim victim, MainActivity activity) {
         this.victim = victim;
         this.activity = activity;
+        lifeline = Lifeline.GOOD;
     }
 
     @Override
@@ -48,23 +49,44 @@ public class Simulator extends Thread{
                 }
             }
             try { //this is where the simulation happens
-                sleep(1000);
-                Random rand = new Random();
-                victim = new Victim(rand.nextInt(5)); //placeholder for testing
+                sleep(timeStep);
+                advanceState();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+            activity.transferPayload(victim);
             activity.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     activity.actualize(victim);
                 }
             });
+
         }
+    }
+
+    private void advanceState(){
+        Random r = new Random();
+        switch(lifeline){
+            case GOOD:
+                break;
+            case STABLE:
+                break;
+            case HURT:
+                break;
+            case DYING:
+                break;
+            default:
+        }
+        double increment = r.nextGaussian()/10;
+        victim.setRespiratoryRate(victim.getRespiratoryRate()+(int)(victim.getRespiratoryRate()*increment));
+        victim.calculateColor();
     }
 
     @Override
     public void start(){
+        if(alive)
+            return;
         alive = true;
         super.start();
     }
@@ -87,5 +109,11 @@ public class Simulator extends Thread{
     public boolean isPaused() {
         return paused;
     }
+
+    public Victim getVictim() {
+        return victim;
+    }
+
+    public enum Lifeline { GOOD, STABLE, HURT, DYING}
 
 }
