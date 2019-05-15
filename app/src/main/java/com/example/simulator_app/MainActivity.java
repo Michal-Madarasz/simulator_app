@@ -21,12 +21,14 @@ import android.widget.ImageView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ViewFlipper;
 
 import com.google.android.gms.nearby.Nearby;
 import com.google.android.gms.nearby.connection.AdvertisingOptions;
 import com.google.android.gms.nearby.connection.ConnectionInfo;
 import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback;
 import com.google.android.gms.nearby.connection.ConnectionResolution;
+import com.google.android.gms.nearby.connection.ConnectionsClient;
 import com.google.android.gms.nearby.connection.ConnectionsStatusCodes;
 import com.google.android.gms.nearby.connection.DiscoveredEndpointInfo;
 import com.google.android.gms.nearby.connection.DiscoveryOptions;
@@ -48,6 +50,8 @@ import java.io.ObjectOutputStream;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
+    private enum TransmitterStatus {IDLE, DISCOVERING, ADVERTISING, CONNECTED};
+
     private static final String[] REQUIRED_PERMISSIONS =
             new String[]{
                     Manifest.permission.BLUETOOTH,
@@ -61,7 +65,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     final private String RESCUER_SERVICE_ID = "triage.rescuer-simulator";
     final private String COORDINATOR_SERVICE_ID = "triage.simulator-rescuer";
     private String coordinatorID = "";
+    private String rescuerID = "";
     private String IMEI;
+    private TransmitterStatus transmitterStatus = TransmitterStatus.IDLE;
     private static final int REQUEST_CODE_REQUIRED_PERMISSIONS = 1;
 
     private Simulator simulator;
@@ -91,6 +97,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 case ConnectionsStatusCodes.STATUS_OK:
                     // We're connected! Can now start sending and receiving data.
                     coordinatorID = s;
+                    transmitterStatus = TransmitterStatus.CONNECTED;
                     break;
                 case ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED:
                     // The connection was rejected by one or both sides.
@@ -105,11 +112,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         @Override
         public void onDisconnected(String s) {
-            if(s.equals(coordinatorID))
+            if(s.equals(coordinatorID)) {
                 coordinatorID = "";
+                transmitterStatus = TransmitterStatus.IDLE;
+            }
         }
     };
-
 
     ConnectionLifecycleCallback communicationCallbacksRescuers = new ConnectionLifecycleCallback() {
         @Override
@@ -137,6 +145,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             switch (connectionResolution.getStatus().getStatusCode()) {
                 case ConnectionsStatusCodes.STATUS_OK:
                     // We're connected! Can now start sending and receiving data.
+                    rescuerID = s;
                     break;
                 case ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED:
                     // The connection was rejected by one or both sides.
@@ -151,7 +160,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         @Override
         public void onDisconnected(String s) {
-            //Toast.makeText(getApplicationContext(), "Disconnected", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(), "Disconnected", Toast.LENGTH_SHORT).show();
+            rescuerID = "";
+            Nearby.getConnectionsClient(getApplicationContext()).stopAdvertising();
+            startDiscovery();
         }
     };
     PayloadCallback payloadReceiver = new PayloadCallback() {
@@ -161,8 +173,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 ByteArrayInputStream bis = new ByteArrayInputStream(payload.asBytes());
                 ObjectInputStream is = new ObjectInputStream(bis);
                 rescuer = (Rescuer) is.readObject();
-                Nearby.getConnectionsClient(getApplicationContext()).stopAdvertising();
-                startDiscovery();
+                Nearby.getConnectionsClient(getApplicationContext()).disconnectFromEndpoint(s);
             } catch (Exception e){
                 Toast.makeText(getApplicationContext(), "Błąd odbioru informacji o ratowniku", Toast.LENGTH_SHORT ).show();
                 Log.e("TAG", e.getMessage());
@@ -217,7 +228,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 t.setText("nie");
 
             t = findViewById(R.id.refill_val);
-            t.setText(victim.getRespiratoryRate() + "odd./min");
+            t.setText(String.format("%.0f", victim.getRespiratoryRate()) + "odd./min");
 
             t = findViewById(R.id.pulse_val);
             t.setText(victim.getCapillaryRefillTime() + "s");
@@ -273,8 +284,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setSupportActionBar(toolbar);
 
         spinner = findViewById(R.id.spin_lifeline);
-        Victim victim = new Victim();
-        simulator = new Simulator(victim, this);
+        Simulator.Lifeline l = Simulator.Lifeline.values()[spinner.getSelectedItemPosition()];
+        simulator = new Simulator(l, this);
 
         Button startButton = findViewById(R.id.startButton);
         startButton.setOnClickListener(this);
@@ -283,6 +294,47 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Button pauseButton = findViewById(R.id.pauseButton);
         pauseButton.setOnClickListener(this);
 
+        TextView t = findViewById(R.id.reset_transmitter);
+        t.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                ConnectionsClient adapter = Nearby.getConnectionsClient(getApplicationContext());
+                switch (transmitterStatus){
+                    case CONNECTED:
+                        break;
+                    case ADVERTISING:
+                        adapter.stopAdvertising();
+                        startAdvertising();
+                        break;
+                    case DISCOVERING:
+                        adapter.stopDiscovery();
+                        startDiscovery();
+                        break;
+                    default:
+                        startAdvertising();
+                }
+                updateSettings();
+            }
+        });
+
+
+    }
+
+    public void updateSettings(){
+        TextView t = findViewById(R.id.transmitter_status_label);
+        switch (transmitterStatus){
+            case ADVERTISING:
+                t.setText("czeka na ZRM");
+                break;
+            case DISCOVERING:
+                t.setText("łączy się z KAM");
+                break;
+            case CONNECTED:
+                t.setText("połączony z KAM");
+                break;
+            default:
+                t.setText("bezczynny");
+        }
     }
 
     @Override
@@ -298,7 +350,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-
+        ViewFlipper vf = findViewById(R.id.layout_manager);
+        switch(id){
+            case R.id.action_settings:
+                updateSettings();
+                vf.setDisplayedChild(1);
+                return true;
+            default:
+                vf.setDisplayedChild(0);
+        }
 
         return super.onOptionsItemSelected(item);
     }
@@ -320,13 +380,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 simulator.kill();
                 break;
             case R.id.pauseButton:
-                if(simulator.isPaused()){
-                    simulator.unpause();
-                    ((Button)findViewById(R.id.pauseButton)).setText("PAUZA");
-                }
-                else {
-                    simulator.pause();
-                    ((Button)findViewById(R.id.pauseButton)).setText("KONT.");
+                if(simulator.alive) {
+                    if (simulator.isPaused()) {
+                        simulator.unpause();
+                        ((Button) findViewById(R.id.pauseButton)).setText("PAUZA");
+                    } else {
+                        simulator.pause();
+                        ((Button) findViewById(R.id.pauseButton)).setText("KONT.");
+                    }
                 }
                 break;
             default:
@@ -342,6 +403,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 .addOnSuccessListener(
                         (Void unused) -> {
                             Toast.makeText(getApplicationContext(), "Startujemy nadawanie", Toast.LENGTH_SHORT).show();
+                            transmitterStatus = TransmitterStatus.ADVERTISING;
                         })
                 .addOnFailureListener(
                         (Exception e) -> {
@@ -360,10 +422,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 .addOnSuccessListener(
                         (Void unused) -> {
                             Toast.makeText(getApplicationContext(), "Startujemy odkrywanie", Toast.LENGTH_SHORT).show();
+                            transmitterStatus = TransmitterStatus.DISCOVERING;
                         })
                 .addOnFailureListener(
                         (Exception e) -> {
-                            Toast.makeText(getApplicationContext(), "Nie wystartowano odkrywania", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
                             Log.e("TAG", e.getMessage());
                         });
     }

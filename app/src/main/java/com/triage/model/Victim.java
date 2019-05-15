@@ -12,13 +12,13 @@ public class Victim implements Serializable {
     private boolean changingState;
     private long id;
     private boolean breathing;
-    private int respiratoryRate;
+    private float respiratoryRate;
     private float capillaryRefillTime;
     private boolean walking;
     private TriageColor color;
     private AVPU consciousness;
 
-    public Victim(boolean breathing, int respiratoryRate, float capillaryRefillTime, boolean walking, AVPU consciousness) {
+    public Victim(boolean breathing, float respiratoryRate, float capillaryRefillTime, boolean walking, AVPU consciousness) {
         this.id = totalID; totalID++;
         this.breathing = breathing;
         this.respiratoryRate = respiratoryRate;
@@ -30,11 +30,6 @@ public class Victim implements Serializable {
 
     public Victim() {
         this.id = totalID; totalID++;
-        this.breathing = true;
-        this.respiratoryRate = 20;
-        this.capillaryRefillTime = 1.5f;
-        this.walking = true;
-        this.consciousness = AVPU.AWAKE;
         calculateColor();
     }
 
@@ -85,11 +80,11 @@ public class Victim implements Serializable {
         this.breathing = breathing;
     }
 
-    public int getRespiratoryRate() {
+    public float getRespiratoryRate() {
         return respiratoryRate;
     }
 
-    public void setRespiratoryRate(int respiratoryRate) {
+    public void setRespiratoryRate(float respiratoryRate) {
         this.respiratoryRate = respiratoryRate;
     }
 

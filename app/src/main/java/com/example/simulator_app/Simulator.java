@@ -6,6 +6,8 @@ import java.util.Random;
 
 public class Simulator extends Thread{
 
+    public enum Lifeline { GOOD, STABLE, HURT, DYING, DEAD}
+
     private final int timeStep = 3000;
 
     private Victim victim;
@@ -19,6 +21,17 @@ public class Simulator extends Thread{
         this.victim = victim;
         this.activity = activity;
         lifeline = Lifeline.GOOD;
+    }
+
+    public Simulator(Lifeline lifeline, MainActivity activity) {
+        this.lifeline = lifeline;
+        boolean breathing = true;
+        float respiratoryRate = 20;
+        float capillaryRefillTime = 1.5f;
+        boolean walking = true;
+        Victim.AVPU consciousness = Victim.AVPU.AWAKE;
+        this.victim = new Victim(breathing, respiratoryRate, capillaryRefillTime, walking, consciousness);
+        this.activity = activity;
     }
 
     @Override
@@ -78,8 +91,16 @@ public class Simulator extends Thread{
                 break;
             default:
         }
-        double increment = r.nextGaussian()/10;
-        victim.setRespiratoryRate(victim.getRespiratoryRate()+(int)(victim.getRespiratoryRate()*increment));
+        float noise = (float)r.nextGaussian()/10;
+        victim.setRespiratoryRate(victim.getRespiratoryRate()+(victim.getRespiratoryRate()*noise));
+        victim.setCapillaryRefillTime(r.nextFloat()*3);
+        victim.setWalking(r.nextFloat()>0.8);
+        if(victim.getRespiratoryRate()<=0){
+            victim.setBreathing(false);
+            victim.setWalking(false);
+            victim.setRespiratoryRate(0);
+            victim.setConsciousness(Victim.AVPU.UNRESPONSIVE);
+        }
         victim.calculateColor();
     }
 
@@ -114,6 +135,6 @@ public class Simulator extends Thread{
         return victim;
     }
 
-    public enum Lifeline { GOOD, STABLE, HURT, DYING}
+
 
 }
