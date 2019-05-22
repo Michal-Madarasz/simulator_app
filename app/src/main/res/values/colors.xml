@@ -3,4 +3,8 @@
     <color name="colorPrimary">#008577</color>
     <color name="colorPrimaryDark">#00574B</color>
     <color name="colorAccent">#D81B60</color>
+    <color name="colorTriageBlack">#000000</color>
+    <color name="colorTriageRed">#F00202</color>
+    <color name="colorTriageYellow">#E9CF0E</color>
+    <color name="colorTriageGreen">#2AC730</color>
 </resources>
