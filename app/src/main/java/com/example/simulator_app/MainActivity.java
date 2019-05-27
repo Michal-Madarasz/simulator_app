@@ -64,6 +64,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     final private String RESCUER_SERVICE_ID = "triage.rescuer-simulator";
     final private String COORDINATOR_SERVICE_ID = "triage.simulator-rescuer";
+    private String ID;
     private String coordinatorID = "";
     private String rescuerID = "";
     private String IMEI;
@@ -96,6 +97,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             switch (connectionResolution.getStatus().getStatusCode()) {
                 case ConnectionsStatusCodes.STATUS_OK:
                     // We're connected! Can now start sending and receiving data.
+                    Toast.makeText(getApplicationContext(), "Nadawanie do KAM rozpoczęte", Toast.LENGTH_SHORT).show();
                     coordinatorID = s;
                     transmitterStatus = TransmitterStatus.CONNECTED;
                     break;
@@ -113,6 +115,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         public void onDisconnected(String s) {
             if(s.equals(coordinatorID)) {
+                Toast.makeText(getApplicationContext(), "Nadawanie do KAM przerwane", Toast.LENGTH_SHORT).show();
                 coordinatorID = "";
                 transmitterStatus = TransmitterStatus.IDLE;
             }
@@ -122,22 +125,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     ConnectionLifecycleCallback communicationCallbacksRescuers = new ConnectionLifecycleCallback() {
         @Override
         public void onConnectionInitiated(final String endID, ConnectionInfo connectionInfo) {
-            new AlertDialog.Builder(MainActivity.this)
-                    .setTitle("Autoryzacja")
-                    .setMessage("Wykryto próbę połączenia.\nCzy drugie urządzenie wyświetla kod: " + connectionInfo.getAuthenticationToken())
-                    .setPositiveButton("tak", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            Nearby.getConnectionsClient(getApplicationContext()).acceptConnection(endID, payloadReceiver);
-                        }
-                    })
-                    .setNegativeButton("nie", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            Nearby.getConnectionsClient(getApplicationContext()).rejectConnection(endID);
-                        }
-                    })
-                    .show();
+            Nearby.getConnectionsClient(getApplicationContext()).acceptConnection(endID, payloadReceiver);
         }
 
         @Override
@@ -160,7 +148,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         @Override
         public void onDisconnected(String s) {
-            Toast.makeText(getApplicationContext(), "Disconnected", Toast.LENGTH_SHORT).show();
+            //Toast.makeText(getApplicationContext(), "Disconnected", Toast.LENGTH_SHORT).show();
             rescuerID = "";
             Nearby.getConnectionsClient(getApplicationContext()).stopAdvertising();
             startDiscovery();
@@ -175,7 +163,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 rescuer = (Rescuer) is.readObject();
                 Nearby.getConnectionsClient(getApplicationContext()).disconnectFromEndpoint(s);
             } catch (Exception e){
-                Toast.makeText(getApplicationContext(), "Błąd odbioru informacji o ratowniku", Toast.LENGTH_SHORT ).show();
+                //Toast.makeText(getApplicationContext(), "Błąd odbioru informacji o ratowniku", Toast.LENGTH_SHORT ).show();
                 Log.e("TAG", e.getMessage());
             }
         }
@@ -217,9 +205,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void actualize(Victim victim) {
         try {
             TextView t;
-
-            t = findViewById(R.id.IMEI_val);
-            t.setText(String.format("%d", victim.getId()));
 
             t = findViewById(R.id.breath_val);
             if (victim.isBreathing())
@@ -282,6 +267,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        ID = generateRandomID();
+        ((TextView)findViewById(R.id.ID_val)).setText(ID);
 
         spinner = findViewById(R.id.spin_lifeline);
         Simulator.Lifeline l = Simulator.Lifeline.values()[spinner.getSelectedItemPosition()];
@@ -367,7 +355,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.startButton:
-                Toast.makeText(MainActivity.this, "Start", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Symulacja wystartowana", Toast.LENGTH_SHORT).show();
                 try {
                     simulator.start();
                 } catch (IllegalThreadStateException e) { //something went wrong
@@ -376,7 +364,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
                 break;
             case R.id.stopButton:
-                Toast.makeText(MainActivity.this, "Stop", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Symulacja przerwana", Toast.LENGTH_SHORT).show();
                 simulator.kill();
                 break;
             case R.id.pauseButton:
@@ -399,15 +387,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         AdvertisingOptions advertisingOptions =
                 new AdvertisingOptions.Builder().setStrategy(Strategy.P2P_CLUSTER).build();
         Nearby.getConnectionsClient(getApplicationContext()).startAdvertising(
-                "Symulator", RESCUER_SERVICE_ID, communicationCallbacksRescuers, advertisingOptions)
+                ID, RESCUER_SERVICE_ID, communicationCallbacksRescuers, advertisingOptions)
                 .addOnSuccessListener(
                         (Void unused) -> {
-                            Toast.makeText(getApplicationContext(), "Startujemy nadawanie", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getApplicationContext(), "Nasłuchiwanie na połączenie od ratownika", Toast.LENGTH_SHORT).show();
                             transmitterStatus = TransmitterStatus.ADVERTISING;
                         })
                 .addOnFailureListener(
                         (Exception e) -> {
-                            Toast.makeText(getApplicationContext(), "Nie wystartowano nadawania", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getApplicationContext(), "Błąd inicjalizacji nadajnika, \nnadajnik jest wykorzystywany przez inną aplikację", Toast.LENGTH_SHORT).show();
                             Log.e("TAG", e.getMessage());
                         });
     }
@@ -421,17 +409,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 discoveryOptions)
                 .addOnSuccessListener(
                         (Void unused) -> {
-                            Toast.makeText(getApplicationContext(), "Startujemy odkrywanie", Toast.LENGTH_SHORT).show();
+                            //Toast.makeText(getApplicationContext(), "Startujemy odkrywanie", Toast.LENGTH_SHORT).show();
                             transmitterStatus = TransmitterStatus.DISCOVERING;
                         })
                 .addOnFailureListener(
                         (Exception e) -> {
-                            Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
+                            //Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
                             Log.e("TAG", e.getMessage());
                         });
     }
-
-
 
     /** Called when our Activity has been made visible to the user. */
     @Override
@@ -459,6 +445,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         TelephonyManager tm = (TelephonyManager) getBaseContext().getSystemService(Context.TELEPHONY_SERVICE);
         IMEI = tm.getDeviceId();
         startAdvertising();
+    }
+
+
+    private String generateRandomID(){
+        final int ID_LENGTH = 6;
+        final String LEGAL_CHARACTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+        StringBuilder sb = new StringBuilder();
+        for(int i=0; i<ID_LENGTH; i++){
+            int characterIndex = (int)(Math.random()*LEGAL_CHARACTERS.length());
+            sb.append(LEGAL_CHARACTERS.charAt(characterIndex));
+        }
+
+        return sb.toString();
     }
 
     protected String[] getRequiredPermissions() {
