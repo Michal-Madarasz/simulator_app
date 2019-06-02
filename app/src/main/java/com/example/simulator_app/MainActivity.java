@@ -330,15 +330,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
 
         checkingDirectory();
-        try {
-            File file = new File("/storage/emulated/0/life_lines/" + spinner.getItemAtPosition(spinner.getSelectedItemPosition()).toString());
-            InputStream inputStream = new FileInputStream(file);
-            OutputStream outputStream = new FileOutputStream(file);
-            csvFile.setCSVFile(inputStream, outputStream);
-        } catch(IOException e){
-            Toast.makeText(getApplicationContext(), "Problem z wczytaniem pliku", Toast.LENGTH_SHORT ).show();
-            Log.e("TAG", e.getMessage());
-        }
+        loadCSVFile();
     }
 
     public void updateSettings(){
@@ -391,17 +383,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Toast.makeText(MainActivity.this, "Start", Toast.LENGTH_SHORT).show();
                 try {
                     checkingDirectory();
-                    try {
-                        File file = new File("/storage/emulated/0/life_lines/" + spinner.getItemAtPosition(spinner.getSelectedItemPosition()).toString());
-                        InputStream inputStream = new FileInputStream(file);
-                        OutputStream outputStream = new FileOutputStream(file);
-                        csvFile.setCSVFile(inputStream, outputStream);
-                        simulator.setStatesList(csvFile.read());
-                        simulator.start();
-                    } catch(IOException e){
-                        Toast.makeText(getApplicationContext(), "Problem z wczytaniem pliku", Toast.LENGTH_SHORT ).show();
-                        Log.e("TAG", e.getMessage());
-                    }
+                    loadCSVFile();
+                    simulator.setStatesList(csvFile.read());
+                    simulator.start();
                 } catch (IllegalThreadStateException e) { //something went wrong
                     e.printStackTrace();
                     simulator.start();
@@ -500,7 +484,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
 
 
-
+    private void loadCSVFile(){
+        try {
+            File file = new File("/storage/emulated/0/life_lines/" + spinner.getItemAtPosition(spinner.getSelectedItemPosition()).toString());
+            InputStream inputStream = new FileInputStream(file);
+            OutputStream outputStream = new FileOutputStream(file);
+            csvFile.setCSVFile(inputStream, outputStream);
+        } catch(IOException e){
+            Toast.makeText(getApplicationContext(), "Problem z wczytaniem pliku", Toast.LENGTH_SHORT ).show();
+            Log.e("TAG", e.getMessage());
+        }
+    }
 
 
     // check content of directory "/storage/emulated/0/life_lines"
@@ -531,7 +525,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 victimStatesExample.add("true,30,3,false,AWAKE");
                 victimStatesExample.add("true,25,2,false,UNRESPONSIVE");
                 victimStatesExample.add("false,15,1,false,UNRESPONSIVE");
-                csvFile.write(victimStatesExample);
+
+
+                try {
+                    File file = new File(csvFilePath);
+                    InputStream inputStream = new FileInputStream(file);
+                    OutputStream outputStream = new FileOutputStream(file);
+                    csvFile.setCSVFile(inputStream, outputStream);
+                    csvFile.write(victimStatesExample);
+                } catch(IOException e){
+                    Toast.makeText(getApplicationContext(), "Problem z wczytaniem pliku", Toast.LENGTH_SHORT ).show();
+                    Log.e("TAG", e.getMessage());
+                }
 
                 filesList = directory.list();
             }catch(Exception e)
