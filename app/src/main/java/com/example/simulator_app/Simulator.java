@@ -1,7 +1,13 @@
 package com.example.simulator_app;
 
+import android.widget.ArrayAdapter;
+import android.widget.Spinner;
+
 import com.triage.model.Victim;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.Random;
 
 public class Simulator extends Thread{
@@ -16,6 +22,8 @@ public class Simulator extends Thread{
     volatile boolean alive = false;
     private boolean paused = false;
     private final Object pauseLock = new Object();
+
+    ArrayList<String[]> statesList = new ArrayList<String[]>();
 
     public Simulator(Victim victim, MainActivity activity) {
         this.victim = victim;
@@ -34,47 +42,56 @@ public class Simulator extends Thread{
         this.activity = activity;
     }
 
+
+
     @Override
     public void run() {
         while (alive) {
-            synchronized (pauseLock) {
-                if (!alive) { // may have changed while waiting to
-                    // synchronize on pauseLock
-                    break;
-                }
-                if (paused) {
-                    try {
-                        synchronized (pauseLock) {
-                            pauseLock.wait(); // will cause this Thread to block until
-                            // another thread calls pauseLock.notifyAll()
-                            // Note that calling wait() will
-                            // relinquish the synchronized lock that this
-                            // thread holds on pauseLock so another thread
-                            // can acquire the lock to call notifyAll()
-                            // (link with explanation below this code)
-                        }
-                    } catch (InterruptedException ex) {
-                        break;
-                    }
-                    if (!alive) { // running might have changed since we paused
-                        break;
-                    }
-                }
-            }
-            try { //this is where the simulation happens
-                sleep(timeStep);
-                advanceState();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            activity.transferPayload(victim);
-            activity.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    activity.actualize(victim);
-                }
-            });
+            for(String[] state : statesList) {
 
+                synchronized (pauseLock) {
+                    if (!alive) { // may have changed while waiting to
+                        // synchronize on pauseLock
+                        break;
+                    }
+                    if (paused) {
+                        try {
+                            synchronized (pauseLock) {
+                                pauseLock.wait(); // will cause this Thread to block until
+                                // another thread calls pauseLock.notifyAll()
+                                // Note that calling wait() will
+                                // relinquish the synchronized lock that this
+                                // thread holds on pauseLock so another thread
+                                // can acquire the lock to call notifyAll()
+                                // (link with explanation below this code)
+                            }
+                        } catch (InterruptedException ex) {
+                            break;
+                        }
+                        if (!alive) { // running might have changed since we paused
+                            break;
+                        }
+                    }
+                }
+                try { //this is where the simulation happens
+                    sleep(timeStep);
+                    try{
+                        victim.setVictim(state);
+                    }catch (Exception e){
+                        // TODO: error message
+                    }
+                    //advanceState();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                activity.transferPayload(victim);
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        activity.actualize(victim);
+                    }
+                });
+            }
         }
     }
 
@@ -135,6 +152,9 @@ public class Simulator extends Thread{
         return victim;
     }
 
-
+    void setStatesList(ArrayList<String[]> statesList)
+    {
+        this.statesList=statesList;
+    }
 
 }

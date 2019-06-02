@@ -16,6 +16,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Spinner;
@@ -44,9 +45,16 @@ import org.javatuples.Triplet;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -73,6 +81,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Simulator simulator;
     private Rescuer rescuer;
     private Spinner spinner;
+    private CSVFile csvFile;
 
     EndpointDiscoveryCallback endpointDiscoveryCallback = new EndpointDiscoveryCallback() {
         @Override
@@ -318,6 +327,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         });
 
 
+
+
+        checkingDirectory();
+        try {
+            File file = new File("/storage/emulated/0/life_lines/" + spinner.getItemAtPosition(spinner.getSelectedItemPosition()).toString());
+            InputStream inputStream = new FileInputStream(file);
+            OutputStream outputStream = new FileOutputStream(file);
+            csvFile.setCSVFile(inputStream, outputStream);
+        } catch(IOException e){
+            Toast.makeText(getApplicationContext(), "Problem z wczytaniem pliku", Toast.LENGTH_SHORT ).show();
+            Log.e("TAG", e.getMessage());
+        }
     }
 
     public void updateSettings(){
@@ -369,7 +390,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.startButton:
                 Toast.makeText(MainActivity.this, "Start", Toast.LENGTH_SHORT).show();
                 try {
-                    simulator.start();
+                    checkingDirectory();
+                    try {
+                        File file = new File("/storage/emulated/0/life_lines/" + spinner.getItemAtPosition(spinner.getSelectedItemPosition()).toString());
+                        InputStream inputStream = new FileInputStream(file);
+                        OutputStream outputStream = new FileOutputStream(file);
+                        csvFile.setCSVFile(inputStream, outputStream);
+                        simulator.setStatesList(csvFile.read());
+                        simulator.start();
+                    } catch(IOException e){
+                        Toast.makeText(getApplicationContext(), "Problem z wczytaniem pliku", Toast.LENGTH_SHORT ).show();
+                        Log.e("TAG", e.getMessage());
+                    }
                 } catch (IllegalThreadStateException e) { //something went wrong
                     e.printStackTrace();
                     simulator.start();
@@ -464,4 +496,57 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected String[] getRequiredPermissions() {
         return REQUIRED_PERMISSIONS;
     }
+
+
+
+
+
+
+
+    // check content of directory "/storage/emulated/0/life_lines"
+    // if it not contains any file, function will create file with life line
+    private void checkingDirectory()
+    {
+        File directory = new File("/storage/emulated/0/life_lines");
+        if (!directory.exists()) {
+            if (directory.mkdir()) {
+                System.out.println("Directory is created!");
+            } else {
+                System.out.println("Failed to create directory!");
+            }
+        }
+        String[] filesList = directory.list();
+        if(filesList.length == 0)
+        {
+            // TODO:
+            // Tworzenie przykladowego pliku z linia zycia
+            String csvFilePath = directory.getPath()+"linia0.csv";     // ZAPISZ NAZWE PLIKU GDZIES POZA FUNKCJA, NAPISZ FUNKCJE USTALAJACA SCIEZKE
+            try {
+                FileWriter writer = new FileWriter(csvFilePath);
+                ArrayList<String> victimStatesExample = new ArrayList<String>();
+                //breathing, respiratoryRate, capillaryRefillTime, walking, consciousness
+                        // AWAKE, VERBAL, PAIN, UNRESPONSIVE
+                victimStatesExample.add("true,45,5,true,VERBAL");
+                victimStatesExample.add("true,35,4,false,PAIN");
+                victimStatesExample.add("true,30,3,false,AWAKE");
+                victimStatesExample.add("true,25,2,false,UNRESPONSIVE");
+                victimStatesExample.add("false,15,1,false,UNRESPONSIVE");
+                csvFile.write(victimStatesExample);
+
+                filesList = directory.list();
+            }catch(Exception e)
+            {
+                Toast.makeText(getApplicationContext(), "Nie udalo sie stworzyc pliku z przykladowymi danymi", Toast.LENGTH_SHORT ).show();
+                Log.e("TAG", e.getMessage());
+            }
+        }
+
+        // save list of files in spinner
+        Spinner spin = (Spinner) findViewById(R.id.spin_lifeline);
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
+                android.R.layout.simple_spinner_item, filesList);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spin.setAdapter(adapter);
+    }
+
 }
