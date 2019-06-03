@@ -1,17 +1,23 @@
 package com.example.simulator_app;
 
+import android.os.Environment;
+import android.widget.Toast;
+
 import com.triage.model.Victim;
 
-import java.util.Random;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.util.ArrayList;
 
 public class Simulator extends Thread{
 
     public enum Lifeline { GOOD, STABLE, HURT, DYING, DEAD}
 
-    private final int timeStep = 3000;
+    private final int timeStep = 1000;
 
     private Victim victim;
-    private Lifeline lifeline;
+    private File lifelineSource;
     private MainActivity activity;
     volatile boolean alive = false;
     private boolean paused = false;
@@ -20,11 +26,9 @@ public class Simulator extends Thread{
     public Simulator(Victim victim, MainActivity activity) {
         this.victim = victim;
         this.activity = activity;
-        lifeline = Lifeline.GOOD;
     }
 
-    public Simulator(Lifeline lifeline, MainActivity activity) {
-        this.lifeline = lifeline;
+    public Simulator(MainActivity activity) {
         boolean breathing = true;
         float respiratoryRate = 20;
         float capillaryRefillTime = 1.5f;
@@ -34,8 +38,11 @@ public class Simulator extends Thread{
         this.activity = activity;
     }
 
+
+
     @Override
     public void run() {
+        BufferedReader lifeline = openLifeline();
         while (alive) {
             synchronized (pauseLock) {
                 if (!alive) { // may have changed while waiting to
@@ -63,7 +70,19 @@ public class Simulator extends Thread{
             }
             try { //this is where the simulation happens
                 sleep(timeStep);
-                advanceState();
+                try{
+                    String line;
+                    if((line = lifeline.readLine()) != null){
+                        String[] state = line.split(";");
+                        victim.setVictim(state);
+                    }else{//open file again
+                        lifeline.close();
+                        lifeline = openLifeline();
+                    }
+                }catch (Exception e){
+                    // TODO: error message
+                }
+                //advanceState();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -74,34 +93,28 @@ public class Simulator extends Thread{
                     activity.actualize(victim);
                 }
             });
-
         }
     }
 
-    private void advanceState(){
-        Random r = new Random();
-        switch(lifeline){
-            case GOOD:
-                break;
-            case STABLE:
-                break;
-            case HURT:
-                break;
-            case DYING:
-                break;
-            default:
+    void setLifelineSource(String filename){
+        lifelineSource = new File(Environment.getExternalStorageDirectory(), "/life_lines/"+filename);
+
+    }
+
+    private BufferedReader openLifeline(){
+        try {
+            return new BufferedReader(new FileReader(lifelineSource));
         }
-        float noise = (float)r.nextGaussian()/10;
-        victim.setRespiratoryRate(victim.getRespiratoryRate()+(victim.getRespiratoryRate()*noise));
-        victim.setCapillaryRefillTime(r.nextFloat()*3);
-        victim.setWalking(r.nextFloat()>0.8);
-        if(victim.getRespiratoryRate()<=0){
-            victim.setBreathing(false);
-            victim.setWalking(false);
-            victim.setRespiratoryRate(0);
-            victim.setConsciousness(Victim.AVPU.UNRESPONSIVE);
+        catch(Exception e) {
+            activity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(activity.getApplicationContext(), "Błąd odczytu pliku. Plik mógł zostać usunięty. Przerwanie symulacji.", Toast.LENGTH_SHORT ).show();
+                }
+            });
+            alive = false;
         }
-        victim.calculateColor();
+        return null;
     }
 
     @Override
@@ -109,6 +122,7 @@ public class Simulator extends Thread{
         if(alive)
             return;
         alive = true;
+
         super.start();
     }
 
@@ -134,7 +148,5 @@ public class Simulator extends Thread{
     public Victim getVictim() {
         return victim;
     }
-
-
 
 }

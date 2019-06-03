@@ -7,6 +7,7 @@ import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -16,6 +17,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Spinner;
@@ -44,9 +46,16 @@ import org.javatuples.Triplet;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -59,7 +68,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     Manifest.permission.ACCESS_WIFI_STATE,
                     Manifest.permission.CHANGE_WIFI_STATE,
                     Manifest.permission.ACCESS_COARSE_LOCATION,
-                    Manifest.permission.READ_PHONE_STATE
+                    Manifest.permission.READ_PHONE_STATE,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
             };
 
     final private String RESCUER_SERVICE_ID = "triage.rescuer-simulator";
@@ -255,6 +265,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     img.setImageResource(R.color.colorTriageGreen);
                     break;
             }
+
+
         }catch(NullPointerException e){
             e.printStackTrace();
         }
@@ -273,7 +285,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         spinner = findViewById(R.id.spin_lifeline);
         Simulator.Lifeline l = Simulator.Lifeline.values()[spinner.getSelectedItemPosition()];
-        simulator = new Simulator(l, this);
+        simulator = new Simulator(this);
 
         Button startButton = findViewById(R.id.startButton);
         startButton.setOnClickListener(this);
@@ -304,6 +316,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 updateSettings();
             }
         });
+
 
 
     }
@@ -357,6 +370,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.startButton:
                 Toast.makeText(MainActivity.this, "Symulacja wystartowana", Toast.LENGTH_SHORT).show();
                 try {
+                    Spinner spinner = findViewById(R.id.spin_lifeline);
+                    simulator.setLifelineSource((String)spinner.getSelectedItem());
                     simulator.start();
                 } catch (IllegalThreadStateException e) { //something went wrong
                     e.printStackTrace();
@@ -442,6 +457,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
             return;
         }
+
+        checkingDirectory();
+        //loadCSVFile();
+
         TelephonyManager tm = (TelephonyManager) getBaseContext().getSystemService(Context.TELEPHONY_SERVICE);
         IMEI = tm.getDeviceId();
         startAdvertising();
@@ -464,4 +483,64 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected String[] getRequiredPermissions() {
         return REQUIRED_PERMISSIONS;
     }
+
+    // check content of directory "/storage/emulated/0/life_lines"
+    // if it not contains any file, function will create file with life line
+    private void checkingDirectory()
+    {
+        File directory = new File(Environment.getExternalStorageDirectory(), "/life_lines/");
+        if (!directory.exists()) {
+            if (directory.mkdirs()) {
+                Log.println(2,this.getLocalClassName(),"Directory is created!");
+                
+            } else {
+                Log.println(2,this.getLocalClassName(),"Failed to create directory!");
+            }
+        }
+        String[] filesList = directory.list();
+        if(filesList.length == 0)
+        {
+            // TODO:
+            // Tworzenie przykladowego pliku z linia zycia
+            String csvFilePath = directory.getPath()+"/linia0.csv";     // ZAPISZ NAZWE PLIKU GDZIES POZA FUNKCJA, NAPISZ FUNKCJE USTALAJACA SCIEZKE
+            try {
+                ArrayList<String> victimStatesExample = new ArrayList<String>();
+                //breathing, respiratoryRate, capillaryRefillTime, walking, consciousness
+                        // AWAKE, VERBAL, PAIN, UNRESPONSIVE
+                victimStatesExample.add("true;45;5;true;VERBAL");
+                victimStatesExample.add("true;35;4;false;PAIN");
+                victimStatesExample.add("true;30;3;false;AWAKE");
+                victimStatesExample.add("true;25;2;false;UNRESPONSIVE");
+                victimStatesExample.add("false;15;1;false;UNRESPONSIVE");
+
+
+                try {
+                    File file = new File(csvFilePath);
+                    FileOutputStream outputStream = new FileOutputStream(file);
+                    for(String line : victimStatesExample){
+                        outputStream.write(line.getBytes());
+                        outputStream.write("\n".getBytes());
+                    }
+                    outputStream.close();
+                } catch(IOException e){
+                    Toast.makeText(getApplicationContext(), "Problem z wczytaniem pliku", Toast.LENGTH_SHORT ).show();
+                    Log.e("TAG", e.getMessage());
+                }
+
+                filesList = directory.list();
+            }catch(Exception e)
+            {
+                Toast.makeText(getApplicationContext(), "Nie udalo sie stworzyc pliku z przykladowymi danymi", Toast.LENGTH_SHORT ).show();
+                Log.e("TAG", e.getMessage());
+            }
+        }
+
+        // save list of files in spinner
+        Spinner spin = (Spinner) findViewById(R.id.spin_lifeline);
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
+                android.R.layout.simple_spinner_item, filesList);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spin.setAdapter(adapter);
+    }
+
 }
