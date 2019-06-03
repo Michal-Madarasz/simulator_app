@@ -21,6 +21,7 @@ public class Simulator extends Thread{
     private MainActivity activity;
     volatile boolean alive = false;
     private boolean paused = false;
+    private boolean finished = false;
     private final Object pauseLock = new Object();
 
     public Simulator(Victim victim, MainActivity activity) {
@@ -94,6 +95,7 @@ public class Simulator extends Thread{
                 }
             });
         }
+        finished = true;
     }
 
     void setLifelineSource(String filename){
@@ -139,6 +141,14 @@ public class Simulator extends Thread{
             paused = false;
             pauseLock.notifyAll(); // Unblocks thread
         }
+    }
+
+    public boolean isFinished() {
+        return finished;
+    }
+
+    public void setFinished(boolean finished) {
+        this.finished = finished;
     }
 
     public boolean isPaused() {
