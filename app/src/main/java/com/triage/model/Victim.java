@@ -18,50 +18,17 @@ public class Victim implements Serializable {
     private TriageColor color;
     private AVPU consciousness;
 
-    public Victim(boolean breathing, float respiratoryRate, float capillaryRefillTime, boolean walking, AVPU consciousness) {
+    public Victim(boolean breathing, float respiratoryRate, float capillaryRefillTime, boolean walking, AVPU consciousness){
         this.id = totalID; totalID++;
         this.breathing = breathing;
         this.respiratoryRate = respiratoryRate;
         this.capillaryRefillTime = capillaryRefillTime;
         this.walking = walking;
         this.consciousness = consciousness;
-        calculateColor();
     }
 
     public Victim() {
         this.id = totalID; totalID++;
-        calculateColor();
-    }
-
-
-
-    public void calculateColor() {
-        if(walking){
-            color = TriageColor.GREEN;
-            return;
-        } else {
-            if(!breathing){
-                color = TriageColor.BLACK;
-                return;
-            } else {
-                if(respiratoryRate>30){
-                    color = TriageColor.RED;
-                    return;
-                } else {
-                    if(capillaryRefillTime>2){
-                        color = TriageColor.RED;
-                        return;
-                    } else {
-                        if(consciousness== AVPU.PAIN || consciousness== AVPU.UNRESPONSIVE){
-                            color = TriageColor.RED;
-                            return;
-                        } else {
-                            color = TriageColor.YELLOW;
-                        }
-                    }
-                }
-            }
-        }
     }
 
     public long getId() {
@@ -124,48 +91,6 @@ public class Victim implements Serializable {
 
     public enum AVPU {AWAKE, VERBAL, PAIN, UNRESPONSIVE}
 
-    public void stopChangingState() {
-        changingState = false;
-    }
-
-    public boolean getChangingState() {
-        return changingState;
-    }
-
-    // order: breathing, respiratoryRate, capillaryRefillTime, walking, consciousness
-    @Override
-    public String toString()
-    {
-        StringBuilder strBuilder = new StringBuilder();
-
-        /*if(this.changingState) strBuilder.append("true,");
-        else strBuilder.append("false,");*/
-
-
-        if(this.breathing) strBuilder.append("true,");
-        else strBuilder.append("false,");
-
-        strBuilder.append(this.respiratoryRate).append(",");
-
-        strBuilder.append(this.capillaryRefillTime).append(",");
-
-        if(this.walking) strBuilder.append("true,");
-        else strBuilder.append("false,");
-
-        /*
-        if(this.color==TriageColor.RED) strBuilder.append("RED,");
-        else if(this.color==TriageColor.YELLOW) strBuilder.append("YELLOW,");
-        else if(this.color==TriageColor.GREEN) strBuilder.append("GREEN,");
-        else strBuilder.append("BLACK,");       // if else, save as black
-        */
-
-        if(this.consciousness==AVPU.AWAKE) strBuilder.append("AWAKE");
-        else if(this.consciousness==AVPU.VERBAL) strBuilder.append("VERBAL");
-        else if(this.consciousness==AVPU.PAIN) strBuilder.append("PAIN");
-        else  strBuilder.append("UNRESPONSIVE"); // if else, save as unresponsive
-        return strBuilder.toString();
-    }
-
     // order: breathing, respiratoryRate, capillaryRefillTime, walking, consciousness
     public void setVictim(String[] data) throws Exception {
         this.id = totalID; totalID++;
@@ -174,12 +99,6 @@ public class Victim implements Serializable {
         {
             throw new Exception();
         }
-
-        /*
-        if(data[0].equals("true")) changingState = true;
-        else if(data[0].equals("false")) changingState = false;
-        else throw new Exception();
-        */
 
         if(data[0].equals("true")) breathing = true;
         else if(data[0].equals("false")) breathing = false;
@@ -200,6 +119,5 @@ public class Victim implements Serializable {
         else if(data[4].equals("UNRESPONSIVE")) consciousness = AVPU.UNRESPONSIVE;
         else throw new Exception();
 
-        calculateColor();
     }
 }

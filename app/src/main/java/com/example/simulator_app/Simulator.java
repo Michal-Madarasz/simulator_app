@@ -1,38 +1,34 @@
 package com.example.simulator_app;
 
-import android.widget.ArrayAdapter;
-import android.widget.Spinner;
+import android.os.Environment;
+import android.widget.Toast;
 
 import com.triage.model.Victim;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Random;
 
 public class Simulator extends Thread{
 
     public enum Lifeline { GOOD, STABLE, HURT, DYING, DEAD}
 
-    private final int timeStep = 3000;
+    private final int timeStep = 1000;
 
     private Victim victim;
-    private Lifeline lifeline;
+    private File lifelineSource;
     private MainActivity activity;
     volatile boolean alive = false;
     private boolean paused = false;
     private final Object pauseLock = new Object();
 
-    ArrayList<String[]> statesList = new ArrayList<String[]>();
-
     public Simulator(Victim victim, MainActivity activity) {
         this.victim = victim;
         this.activity = activity;
-        lifeline = Lifeline.GOOD;
     }
 
-    public Simulator(Lifeline lifeline, MainActivity activity) {
-        this.lifeline = lifeline;
+    public Simulator(MainActivity activity) {
         boolean breathing = true;
         float respiratoryRate = 20;
         float capillaryRefillTime = 1.5f;
@@ -46,79 +42,79 @@ public class Simulator extends Thread{
 
     @Override
     public void run() {
+        BufferedReader lifeline = openLifeline();
         while (alive) {
-            for(String[] state : statesList) {
-
-                synchronized (pauseLock) {
-                    if (!alive) { // may have changed while waiting to
-                        // synchronize on pauseLock
+            synchronized (pauseLock) {
+                if (!alive) { // may have changed while waiting to
+                    // synchronize on pauseLock
+                    break;
+                }
+                if (paused) {
+                    try {
+                        synchronized (pauseLock) {
+                            pauseLock.wait(); // will cause this Thread to block until
+                            // another thread calls pauseLock.notifyAll()
+                            // Note that calling wait() will
+                            // relinquish the synchronized lock that this
+                            // thread holds on pauseLock so another thread
+                            // can acquire the lock to call notifyAll()
+                            // (link with explanation below this code)
+                        }
+                    } catch (InterruptedException ex) {
                         break;
                     }
-                    if (paused) {
-                        try {
-                            synchronized (pauseLock) {
-                                pauseLock.wait(); // will cause this Thread to block until
-                                // another thread calls pauseLock.notifyAll()
-                                // Note that calling wait() will
-                                // relinquish the synchronized lock that this
-                                // thread holds on pauseLock so another thread
-                                // can acquire the lock to call notifyAll()
-                                // (link with explanation below this code)
-                            }
-                        } catch (InterruptedException ex) {
-                            break;
-                        }
-                        if (!alive) { // running might have changed since we paused
-                            break;
-                        }
+                    if (!alive) { // running might have changed since we paused
+                        break;
                     }
                 }
-                try { //this is where the simulation happens
-                    sleep(timeStep);
-                    try{
-                        victim.setVictim(state);
-                    }catch (Exception e){
-                        // TODO: error message
-                    }
-                    //advanceState();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                activity.transferPayload(victim);
-                activity.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        activity.actualize(victim);
-                    }
-                });
             }
+            try { //this is where the simulation happens
+                sleep(timeStep);
+                try{
+                    String line;
+                    if((line = lifeline.readLine()) != null){
+                        String[] state = line.split(";");
+                        victim.setVictim(state);
+                    }else{//open file again
+                        lifeline.close();
+                        lifeline = openLifeline();
+                    }
+                }catch (Exception e){
+                    // TODO: error message
+                }
+                //advanceState();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            activity.transferPayload(victim);
+            activity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    activity.actualize(victim);
+                }
+            });
         }
     }
 
-    private void advanceState(){
-        Random r = new Random();
-        switch(lifeline){
-            case GOOD:
-                break;
-            case STABLE:
-                break;
-            case HURT:
-                break;
-            case DYING:
-                break;
-            default:
+    void setLifelineSource(String filename){
+        lifelineSource = new File(Environment.getExternalStorageDirectory(), "/life_lines/"+filename);
+
+    }
+
+    private BufferedReader openLifeline(){
+        try {
+            return new BufferedReader(new FileReader(lifelineSource));
         }
-        float noise = (float)r.nextGaussian()/10;
-        victim.setRespiratoryRate(victim.getRespiratoryRate()+(victim.getRespiratoryRate()*noise));
-        victim.setCapillaryRefillTime(r.nextFloat()*3);
-        victim.setWalking(r.nextFloat()>0.8);
-        if(victim.getRespiratoryRate()<=0){
-            victim.setBreathing(false);
-            victim.setWalking(false);
-            victim.setRespiratoryRate(0);
-            victim.setConsciousness(Victim.AVPU.UNRESPONSIVE);
+        catch(Exception e) {
+            activity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(activity.getApplicationContext(), "Błąd odczytu pliku. Plik mógł zostać usunięty. Przerwanie symulacji.", Toast.LENGTH_SHORT ).show();
+                }
+            });
+            alive = false;
         }
-        victim.calculateColor();
+        return null;
     }
 
     @Override
@@ -126,6 +122,7 @@ public class Simulator extends Thread{
         if(alive)
             return;
         alive = true;
+
         super.start();
     }
 
@@ -150,11 +147,6 @@ public class Simulator extends Thread{
 
     public Victim getVictim() {
         return victim;
-    }
-
-    void setStatesList(ArrayList<String[]> statesList)
-    {
-        this.statesList=statesList;
     }
 
 }
