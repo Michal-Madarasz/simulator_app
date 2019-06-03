@@ -72,8 +72,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     Manifest.permission.WRITE_EXTERNAL_STORAGE
             };
 
-    final private String RESCUER_SERVICE_ID = "triage.rescuer-simulator";
-    final private String COORDINATOR_SERVICE_ID = "triage.simulator-rescuer";
+    final private String SERVICE_ID = "triage.communication";
     private String ID;
     private String coordinatorID = "";
     private String rescuerID = "";
@@ -402,7 +401,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         AdvertisingOptions advertisingOptions =
                 new AdvertisingOptions.Builder().setStrategy(Strategy.P2P_CLUSTER).build();
         Nearby.getConnectionsClient(getApplicationContext()).startAdvertising(
-                ID, RESCUER_SERVICE_ID, communicationCallbacksRescuers, advertisingOptions)
+                ID, SERVICE_ID, communicationCallbacksRescuers, advertisingOptions)
                 .addOnSuccessListener(
                         (Void unused) -> {
                             Toast.makeText(getApplicationContext(), "Nasłuchiwanie na połączenie od ratownika", Toast.LENGTH_SHORT).show();
@@ -419,7 +418,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         DiscoveryOptions discoveryOptions =
                 new DiscoveryOptions.Builder().setStrategy(Strategy.P2P_STAR).build();
         Nearby.getConnectionsClient(getApplicationContext()).startDiscovery(
-                COORDINATOR_SERVICE_ID,
+                SERVICE_ID,
                 endpointDiscoveryCallback,
                 discoveryOptions)
                 .addOnSuccessListener(
