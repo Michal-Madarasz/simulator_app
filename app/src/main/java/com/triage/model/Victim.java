@@ -25,6 +25,7 @@ public class Victim implements Serializable {
         this.capillaryRefillTime = capillaryRefillTime;
         this.walking = walking;
         this.consciousness = consciousness;
+        this.color = null;
     }
 
     public Victim() {
