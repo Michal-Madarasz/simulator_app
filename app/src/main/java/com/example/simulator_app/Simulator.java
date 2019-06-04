@@ -159,4 +159,8 @@ public class Simulator extends Thread{
         return victim;
     }
 
+    public void setVictimColor(Victim.TriageColor color){
+        victim.setColor(color);
+    }
+
 }
