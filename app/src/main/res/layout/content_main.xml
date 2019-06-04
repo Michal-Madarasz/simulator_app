@@ -10,12 +10,12 @@
     tools:showIn="@layout/activity_main">
 
     <TextView
-        android:id="@+id/IMEI_label"
+        android:id="@+id/ID_label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginLeft="4dp"
-        android:layout_marginTop="80dp"
-        android:text="ID:"
+        android:layout_marginTop="70dp"
+        android:text="ID symulatora:"
         android:textSize="20sp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -25,7 +25,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginLeft="4dp"
-        android:layout_marginTop="30dp"
+        android:layout_marginTop="20dp"
         android:text="Częst. oddechów:"
         android:textSize="20sp"
         app:layout_constraintLeft_toLeftOf="parent"
@@ -36,7 +36,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginLeft="4dp"
-        android:layout_marginTop="30dp"
+        android:layout_marginTop="20dp"
         android:text="Nawrót kapilarny:"
         android:textSize="20sp"
         app:layout_constraintLeft_toLeftOf="parent"
@@ -47,7 +47,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginLeft="4dp"
-        android:layout_marginTop="30dp"
+        android:layout_marginTop="20dp"
         android:text="Chodzi:"
         android:textSize="20sp"
         app:layout_constraintLeft_toLeftOf="parent"
@@ -58,18 +58,28 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginLeft="4dp"
-        android:layout_marginTop="30dp"
+        android:layout_marginTop="20dp"
         android:text="Ocena świadomości:"
         android:textSize="20sp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/walking_label" />
 
     <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="8dp"
+        android:layout_marginTop="20dp"
+        android:text="Status symulacji:"
+        android:textSize="20sp"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/color_val" />
+
+    <TextView
         android:id="@+id/color_label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginLeft="4dp"
-        android:layout_marginTop="30dp"
+        android:layout_marginTop="20dp"
         android:text="Kolor klasyfikacji:"
         android:textSize="20sp"
         app:layout_constraintLeft_toLeftOf="parent"
@@ -80,19 +90,18 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginLeft="4dp"
-        android:layout_marginTop="30dp"
+        android:layout_marginTop="20dp"
         android:text="Oddycha:"
         android:textSize="20sp"
         app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/IMEI_label" />
+        app:layout_constraintTop_toBottomOf="@+id/ID_label" />
 
     <TextView
-        android:id="@+id/IMEI_val"
+        android:id="@+id/ID_val"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="80dp"
+        android:layout_marginTop="70dp"
         android:layout_marginEnd="4dp"
-        android:text="TextView"
         android:textSize="20sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -101,20 +110,18 @@
         android:id="@+id/breath_val"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="30dp"
+        android:layout_marginTop="20dp"
         android:layout_marginEnd="4dp"
-        android:text="TextView"
         android:textSize="20sp"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/IMEI_val" />
+        app:layout_constraintTop_toBottomOf="@+id/ID_val" />
 
     <TextView
         android:id="@+id/refill_val"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="30dp"
+        android:layout_marginTop="20dp"
         android:layout_marginEnd="4dp"
-        android:text="TextView"
         android:textSize="20sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/breath_val" />
@@ -123,9 +130,8 @@
         android:id="@+id/pulse_val"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="30dp"
+        android:layout_marginTop="20dp"
         android:layout_marginEnd="4dp"
-        android:text="TextView"
         android:textSize="20sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/refill_val" />
@@ -134,20 +140,29 @@
         android:id="@+id/walking_val"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="30dp"
+        android:layout_marginTop="20dp"
         android:layout_marginEnd="4dp"
-        android:text="TextView"
         android:textSize="20sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/pulse_val" />
 
     <TextView
+        android:id="@+id/sym_status_val"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="8dp"
+        android:text="Nieaktywna"
+        android:textSize="20sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/color_val" />
+
+    <TextView
         android:id="@+id/conscious_val"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="30dp"
+        android:layout_marginTop="20dp"
         android:layout_marginEnd="4dp"
-        android:text="TextView"
         android:textSize="20sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/walking_val" />
@@ -156,8 +171,8 @@
         android:id="@+id/color_val"
         android:layout_width="50dp"
         android:layout_height="50dp"
-        android:layout_marginTop="30dp"
-        android:layout_marginEnd="8dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="24dp"
         android:scaleType="fitEnd"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/conscious_val"
@@ -192,7 +207,7 @@
         android:text="Start"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/color_val" />
+        app:layout_constraintTop_toBottomOf="@+id/sym_status_val" />
 
     <Button
         android:id="@+id/stopButton"
@@ -206,7 +221,7 @@
         app:layout_constraintEnd_toStartOf="@+id/pauseButton"
         app:layout_constraintHorizontal_bias="0.528"
         app:layout_constraintStart_toEndOf="@+id/startButton"
-        app:layout_constraintTop_toBottomOf="@+id/color_val" />
+        app:layout_constraintTop_toBottomOf="@+id/sym_status_val" />
 
     <Button
         android:id="@+id/pauseButton"
@@ -217,7 +232,7 @@
         android:text="Pauza"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/color_val" />
+        app:layout_constraintTop_toBottomOf="@+id/sym_status_val" />
 
 
 </android.support.constraint.ConstraintLayout>

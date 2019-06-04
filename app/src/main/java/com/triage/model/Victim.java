@@ -18,50 +18,18 @@ public class Victim implements Serializable {
     private TriageColor color;
     private AVPU consciousness;
 
-    public Victim(boolean breathing, float respiratoryRate, float capillaryRefillTime, boolean walking, AVPU consciousness) {
+    public Victim(boolean breathing, float respiratoryRate, float capillaryRefillTime, boolean walking, AVPU consciousness){
         this.id = totalID; totalID++;
         this.breathing = breathing;
         this.respiratoryRate = respiratoryRate;
         this.capillaryRefillTime = capillaryRefillTime;
         this.walking = walking;
         this.consciousness = consciousness;
-        calculateColor();
+        this.color = null;
     }
 
     public Victim() {
         this.id = totalID; totalID++;
-        calculateColor();
-    }
-
-
-
-    public void calculateColor() {
-        if(walking){
-            color = TriageColor.GREEN;
-            return;
-        } else {
-            if(!breathing){
-                color = TriageColor.BLACK;
-                return;
-            } else {
-                if(respiratoryRate>30){
-                    color = TriageColor.RED;
-                    return;
-                } else {
-                    if(capillaryRefillTime>2){
-                        color = TriageColor.RED;
-                        return;
-                    } else {
-                        if(consciousness== AVPU.PAIN || consciousness== AVPU.UNRESPONSIVE){
-                            color = TriageColor.RED;
-                            return;
-                        } else {
-                            color = TriageColor.YELLOW;
-                        }
-                    }
-                }
-            }
-        }
     }
 
     public long getId() {
@@ -124,11 +92,33 @@ public class Victim implements Serializable {
 
     public enum AVPU {AWAKE, VERBAL, PAIN, UNRESPONSIVE}
 
-    public void stopChangingState() {
-        changingState = false;
-    }
+    // order: breathing, respiratoryRate, capillaryRefillTime, walking, consciousness
+    public void setVictim(String[] data) throws Exception {
+        this.id = totalID; totalID++;
 
-    public boolean getChangingState() {
-        return changingState;
+        if(data.length!=5)
+        {
+            throw new Exception();
+        }
+
+        if(data[0].equals("true")) breathing = true;
+        else if(data[0].equals("false")) breathing = false;
+        else throw new Exception();
+
+        respiratoryRate = Float.parseFloat(data[1]);
+
+        capillaryRefillTime = Float.parseFloat(data[2]);
+
+
+        if(data[3].equals("true")) walking = true;
+        else if(data[3].equals("false")) walking = false;
+        else throw new Exception();
+
+        if(data[4].equals("AWAKE")) consciousness = AVPU.AWAKE;
+        else if(data[4].equals("PAIN")) consciousness = AVPU.PAIN;
+        else if(data[4].equals("VERBAL")) consciousness = AVPU.VERBAL;
+        else if(data[4].equals("UNRESPONSIVE")) consciousness = AVPU.UNRESPONSIVE;
+        else throw new Exception();
+
     }
 }

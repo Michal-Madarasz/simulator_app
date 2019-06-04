@@ -1,12 +1,11 @@
 package com.example.simulator_app;
 
 import android.Manifest;
-import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -16,6 +15,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Spinner;
@@ -44,13 +44,16 @@ import org.javatuples.Triplet;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
-    private enum TransmitterStatus {IDLE, DISCOVERING, ADVERTISING, CONNECTED};
+    private enum TransmitterStatus {IDLE, DISCOVERING, ADVERTISING, CONNECTED_KAM};
 
     private static final String[] REQUIRED_PERMISSIONS =
             new String[]{
@@ -59,11 +62,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     Manifest.permission.ACCESS_WIFI_STATE,
                     Manifest.permission.CHANGE_WIFI_STATE,
                     Manifest.permission.ACCESS_COARSE_LOCATION,
-                    Manifest.permission.READ_PHONE_STATE
+                    Manifest.permission.READ_PHONE_STATE,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
             };
 
-    final private String RESCUER_SERVICE_ID = "triage.rescuer-simulator";
-    final private String COORDINATOR_SERVICE_ID = "triage.simulator-rescuer";
+    final private String SERVICE_ID = "triage.communication";
+    private String ID;
     private String coordinatorID = "";
     private String rescuerID = "";
     private String IMEI;
@@ -71,7 +75,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private static final int REQUEST_CODE_REQUIRED_PERMISSIONS = 1;
 
     private Simulator simulator;
-    private Rescuer rescuer;
+    private Rescuer rescuer = null;
     private Spinner spinner;
 
     EndpointDiscoveryCallback endpointDiscoveryCallback = new EndpointDiscoveryCallback() {
@@ -82,7 +86,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         @Override
         public void onEndpointLost(String s) {
-
+            int a=0;
         }
     };
     ConnectionLifecycleCallback communicationCallbacksCoordinator = new ConnectionLifecycleCallback() {
@@ -96,8 +100,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             switch (connectionResolution.getStatus().getStatusCode()) {
                 case ConnectionsStatusCodes.STATUS_OK:
                     // We're connected! Can now start sending and receiving data.
+                    Toast.makeText(getApplicationContext(), "Nadawanie do KAM rozpoczęte", Toast.LENGTH_SHORT).show();
                     coordinatorID = s;
-                    transmitterStatus = TransmitterStatus.CONNECTED;
+                    transmitterStatus = TransmitterStatus.CONNECTED_KAM;
                     break;
                 case ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED:
                     // The connection was rejected by one or both sides.
@@ -113,6 +118,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         public void onDisconnected(String s) {
             if(s.equals(coordinatorID)) {
+                Toast.makeText(getApplicationContext(), "Nadawanie do KAM przerwane", Toast.LENGTH_SHORT).show();
                 coordinatorID = "";
                 transmitterStatus = TransmitterStatus.IDLE;
             }
@@ -122,22 +128,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     ConnectionLifecycleCallback communicationCallbacksRescuers = new ConnectionLifecycleCallback() {
         @Override
         public void onConnectionInitiated(final String endID, ConnectionInfo connectionInfo) {
-            new AlertDialog.Builder(MainActivity.this)
-                    .setTitle("Autoryzacja")
-                    .setMessage("Wykryto próbę połączenia.\nCzy drugie urządzenie wyświetla kod: " + connectionInfo.getAuthenticationToken())
-                    .setPositiveButton("tak", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            Nearby.getConnectionsClient(getApplicationContext()).acceptConnection(endID, payloadReceiver);
-                        }
-                    })
-                    .setNegativeButton("nie", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            Nearby.getConnectionsClient(getApplicationContext()).rejectConnection(endID);
-                        }
-                    })
-                    .show();
+            Nearby.getConnectionsClient(getApplicationContext()).acceptConnection(endID, payloadReceiver);
         }
 
         @Override
@@ -145,6 +136,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             switch (connectionResolution.getStatus().getStatusCode()) {
                 case ConnectionsStatusCodes.STATUS_OK:
                     // We're connected! Can now start sending and receiving data.
+                    Toast.makeText(getApplicationContext(), "Połączono z ratownikiem", Toast.LENGTH_SHORT).show();
                     rescuerID = s;
                     break;
                 case ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED:
@@ -160,24 +152,43 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         @Override
         public void onDisconnected(String s) {
-            Toast.makeText(getApplicationContext(), "Disconnected", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(), "Rozłączono", Toast.LENGTH_SHORT).show();
             rescuerID = "";
-            Nearby.getConnectionsClient(getApplicationContext()).stopAdvertising();
-            startDiscovery();
+            if(rescuer!=null){
+                Nearby.getConnectionsClient(getApplicationContext()).stopAdvertising();
+                startDiscovery();
+            }
         }
     };
     PayloadCallback payloadReceiver = new PayloadCallback() {
         @Override
         public void onPayloadReceived(String s, Payload payload) {
-            try {
+            try {//próba odczytu jako dane ratownika
                 ByteArrayInputStream bis = new ByteArrayInputStream(payload.asBytes());
                 ObjectInputStream is = new ObjectInputStream(bis);
                 rescuer = (Rescuer) is.readObject();
-                Nearby.getConnectionsClient(getApplicationContext()).disconnectFromEndpoint(s);
+
+                //Nearby.getConnectionsClient(getApplicationContext()).disconnectFromEndpoint(s);
+                return;
             } catch (Exception e){
-                Toast.makeText(getApplicationContext(), "Błąd odbioru informacji o ratowniku", Toast.LENGTH_SHORT ).show();
+                //Toast.makeText(getApplicationContext(), "Błąd odbioru informacji o ratowniku", Toast.LENGTH_SHORT ).show();
                 Log.e("TAG", e.getMessage());
             }
+
+            try {//próba odczytu jako kolor
+                ByteArrayInputStream bis = new ByteArrayInputStream(payload.asBytes());
+                ObjectInputStream is = new ObjectInputStream(bis);
+                Victim.TriageColor color = (Victim.TriageColor) is.readObject();
+                simulator.setVictimColor(color);
+
+                //Nearby.getConnectionsClient(getApplicationContext()).disconnectFromEndpoint(s);
+                Toast.makeText(getApplicationContext(), "Próba rozłączenia", Toast.LENGTH_SHORT).show();
+            } catch (Exception e){
+                //Toast.makeText(getApplicationContext(), "Błąd odbioru informacji o ratowniku", Toast.LENGTH_SHORT ).show();
+                Log.e("TAG", e.getMessage());
+            }
+
+
         }
 
         @Override
@@ -197,9 +208,26 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     public void transferPayload(Victim victim){
-        if(coordinatorID.equals("")) return;
+        if(coordinatorID.equals("")) {
+            if(rescuerID.equals("")) return;
+            //nadajemy do ratownika
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            try {
+                ObjectOutputStream oos = new ObjectOutputStream(bos);
+                oos.writeObject(victim);
+                oos.flush();
+                byte[] bytes = bos.toByteArray();
+                Payload bytesPayload = Payload.fromBytes(bytes);
+                Nearby.getConnectionsClient(getApplicationContext()).sendPayload(rescuerID, bytesPayload);
+                //Toast.makeText(getApplicationContext(), "Wysłano", Toast.LENGTH_SHORT).show();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
 
-        Triplet<String, Rescuer, Victim> data = new Triplet<>(IMEI, rescuer, victim);
+            return;
+        }
+        //nadajemy do koordynatora
+        Triplet<String, Rescuer, Victim> data = new Triplet<>(ID, rescuer, victim);
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         try {
             ObjectOutputStream oos = new ObjectOutputStream(bos);
@@ -217,9 +245,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void actualize(Victim victim) {
         try {
             TextView t;
-
-            t = findViewById(R.id.IMEI_val);
-            t.setText(String.format("%d", victim.getId()));
 
             t = findViewById(R.id.breath_val);
             if (victim.isBreathing())
@@ -270,6 +295,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     img.setImageResource(R.color.colorTriageGreen);
                     break;
             }
+
+
         }catch(NullPointerException e){
             e.printStackTrace();
         }
@@ -283,9 +310,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        ID = generateRandomID();
+        ((TextView)findViewById(R.id.ID_val)).setText(ID);
+
         spinner = findViewById(R.id.spin_lifeline);
-        Simulator.Lifeline l = Simulator.Lifeline.values()[spinner.getSelectedItemPosition()];
-        simulator = new Simulator(l, this);
+        simulator = new Simulator(this);
 
         Button startButton = findViewById(R.id.startButton);
         startButton.setOnClickListener(this);
@@ -300,7 +329,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             public void onClick(View v) {
                 ConnectionsClient adapter = Nearby.getConnectionsClient(getApplicationContext());
                 switch (transmitterStatus){
-                    case CONNECTED:
+                    case CONNECTED_KAM:
                         break;
                     case ADVERTISING:
                         adapter.stopAdvertising();
@@ -316,8 +345,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 updateSettings();
             }
         });
+    }
 
+    private void updateSimulatorStatus(){
+        TextView t = findViewById(R.id.sym_status_val);
+        boolean alive = simulator.isAlive(),
+                paused = simulator.isPaused();
 
+        if(alive){
+            if(paused){
+                t.setText("Wstrzymana");
+            }else{
+                t.setText("Aktywna");
+            }
+        }else{
+            t.setText("Przerwana");
+        }
     }
 
     public void updateSettings(){
@@ -329,7 +372,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case DISCOVERING:
                 t.setText("łączy się z KAM");
                 break;
-            case CONNECTED:
+            case CONNECTED_KAM:
                 t.setText("połączony z KAM");
                 break;
             default:
@@ -367,8 +410,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.startButton:
-                Toast.makeText(MainActivity.this, "Start", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Symulacja wystartowana", Toast.LENGTH_SHORT).show();
                 try {
+                    Spinner spinner = findViewById(R.id.spin_lifeline);
+                    simulator.setLifelineSource((String)spinner.getSelectedItem());
                     simulator.start();
                 } catch (IllegalThreadStateException e) { //something went wrong
                     e.printStackTrace();
@@ -376,7 +421,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
                 break;
             case R.id.stopButton:
-                Toast.makeText(MainActivity.this, "Stop", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Symulacja przerwana", Toast.LENGTH_SHORT).show();
                 simulator.kill();
                 break;
             case R.id.pauseButton:
@@ -392,6 +437,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
             default:
         }
+        updateSimulatorStatus();
     }
 
     private void startAdvertising() {
@@ -399,24 +445,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         AdvertisingOptions advertisingOptions =
                 new AdvertisingOptions.Builder().setStrategy(Strategy.P2P_CLUSTER).build();
         Nearby.getConnectionsClient(getApplicationContext()).startAdvertising(
-                "Symulator", RESCUER_SERVICE_ID, communicationCallbacksRescuers, advertisingOptions)
+                ID, SERVICE_ID, communicationCallbacksRescuers, advertisingOptions)
                 .addOnSuccessListener(
                         (Void unused) -> {
-                            Toast.makeText(getApplicationContext(), "Startujemy nadawanie", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getApplicationContext(), "Nasłuchiwanie na połączenie od ratownika", Toast.LENGTH_SHORT).show();
                             transmitterStatus = TransmitterStatus.ADVERTISING;
                         })
                 .addOnFailureListener(
                         (Exception e) -> {
-                            Toast.makeText(getApplicationContext(), "Nie wystartowano nadawania", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getApplicationContext(), "Błąd inicjalizacji nadajnika, \nnadajnik jest wykorzystywany przez inną aplikację", Toast.LENGTH_SHORT).show();
                             Log.e("TAG", e.getMessage());
                         });
     }
 
     private void startDiscovery() {
         DiscoveryOptions discoveryOptions =
-                new DiscoveryOptions.Builder().setStrategy(Strategy.P2P_STAR).build();
+                new DiscoveryOptions.Builder().setStrategy(Strategy.P2P_CLUSTER).build();
         Nearby.getConnectionsClient(getApplicationContext()).startDiscovery(
-                COORDINATOR_SERVICE_ID,
+                SERVICE_ID,
                 endpointDiscoveryCallback,
                 discoveryOptions)
                 .addOnSuccessListener(
@@ -430,8 +476,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             Log.e("TAG", e.getMessage());
                         });
     }
-
-
 
     /** Called when our Activity has been made visible to the user. */
     @Override
@@ -456,12 +500,90 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
             return;
         }
+
+        checkingDirectory();
+        //loadCSVFile();
+
         TelephonyManager tm = (TelephonyManager) getBaseContext().getSystemService(Context.TELEPHONY_SERVICE);
         IMEI = tm.getDeviceId();
         startAdvertising();
     }
 
+
+    private String generateRandomID(){
+        final int ID_LENGTH = 6;
+        final String LEGAL_CHARACTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+        StringBuilder sb = new StringBuilder();
+        for(int i=0; i<ID_LENGTH; i++){
+            int characterIndex = (int)(Math.random()*LEGAL_CHARACTERS.length());
+            sb.append(LEGAL_CHARACTERS.charAt(characterIndex));
+        }
+
+        return sb.toString();
+    }
+
     protected String[] getRequiredPermissions() {
         return REQUIRED_PERMISSIONS;
     }
+
+    // check content of directory "/storage/emulated/0/life_lines"
+    // if it not contains any file, function will create file with life line
+    private void checkingDirectory()
+    {
+        File directory = new File(Environment.getExternalStorageDirectory(), "/life_lines/");
+        if (!directory.exists()) {
+            if (directory.mkdirs()) {
+                Log.println(2,this.getLocalClassName(),"Directory is created!");
+                
+            } else {
+                Log.println(2,this.getLocalClassName(),"Failed to create directory!");
+            }
+        }
+        String[] filesList = directory.list();
+        if(filesList.length == 0)
+        {
+            // TODO:
+            // Tworzenie przykladowego pliku z linia zycia
+            String csvFilePath = directory.getPath()+"/linia0.csv";     // ZAPISZ NAZWE PLIKU GDZIES POZA FUNKCJA, NAPISZ FUNKCJE USTALAJACA SCIEZKE
+            try {
+                ArrayList<String> victimStatesExample = new ArrayList<String>();
+                //breathing, respiratoryRate, capillaryRefillTime, walking, consciousness
+                        // AWAKE, VERBAL, PAIN, UNRESPONSIVE
+                victimStatesExample.add("true;45;5;true;VERBAL");
+                victimStatesExample.add("true;35;4;false;PAIN");
+                victimStatesExample.add("true;30;3;false;AWAKE");
+                victimStatesExample.add("true;25;2;false;UNRESPONSIVE");
+                victimStatesExample.add("false;15;1;false;UNRESPONSIVE");
+
+
+                try {
+                    File file = new File(csvFilePath);
+                    FileOutputStream outputStream = new FileOutputStream(file);
+                    for(String line : victimStatesExample){
+                        outputStream.write(line.getBytes());
+                        outputStream.write("\n".getBytes());
+                    }
+                    outputStream.close();
+                } catch(IOException e){
+                    Toast.makeText(getApplicationContext(), "Problem z wczytaniem pliku", Toast.LENGTH_SHORT ).show();
+                    Log.e("TAG", e.getMessage());
+                }
+
+                filesList = directory.list();
+            }catch(Exception e)
+            {
+                Toast.makeText(getApplicationContext(), "Nie udalo sie stworzyc pliku z przykladowymi danymi", Toast.LENGTH_SHORT ).show();
+                Log.e("TAG", e.getMessage());
+            }
+        }
+
+        // save list of files in spinner
+        Spinner spin = (Spinner) findViewById(R.id.spin_lifeline);
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
+                android.R.layout.simple_spinner_item, filesList);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spin.setAdapter(adapter);
+    }
+
 }
