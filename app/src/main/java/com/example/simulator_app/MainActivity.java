@@ -154,7 +154,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         public void onDisconnected(String s) {
             Toast.makeText(getApplicationContext(), "Rozłączono", Toast.LENGTH_SHORT).show();
             rescuerID = "";
-            if(rescuer!=null){
+            if(rescuer!=null && simulator.getVictim().getColor()!=null){
                 Nearby.getConnectionsClient(getApplicationContext()).stopAdvertising();
                 startDiscovery();
             }
